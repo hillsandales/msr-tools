@@ -42,6 +42,7 @@ static const struct option long_options[] = {
 };
 static const char short_options[] = "hVap:m:";
 static int doing_for_all = 0;
+static bool rdmsr_required = false;
 
 const char *program;
 
@@ -127,6 +128,10 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (mask != ULONG_MAX) {
+		rdmsr_required = true;
+	}
+
 	if (optind > argc - 2) {
 		/* Should have at least two arguments */
 		usage();
@@ -147,47 +152,49 @@ int main(int argc, char *argv[])
 
 void rmwmsr_on_cpu(uint32_t reg, int cpu, unsigned long mask, int valcnt, char *regvals[])
 {
-	uint64_t data;
+	uint64_t data = 0;
 	int fd;
 	char msr_file_name[64];
 
 	sprintf(msr_file_name, "/dev/cpu/%d/msr", cpu);
 
 	// Read the MSR
-	fd = open(msr_file_name, O_RDONLY);
-	if (fd < 0) {
-		if (errno == ENXIO) {
-			if (doing_for_all)
-				return;
-			fprintf(stderr, "rdmsr: No CPU %d\n", cpu);
-			exit(2);
-		} else if (errno == EIO) {
-			fprintf(stderr, "rdmsr: CPU %d doesn't support MSRs\n",
-				cpu);
-			exit(3);
-		} else {
-			perror("rdmsr: open");
-			exit(127);
+	if(rdmsr_required) {
+		fd = open(msr_file_name, O_RDONLY);
+		if (fd < 0) {
+			if (errno == ENXIO) {
+				if (doing_for_all)
+					return;
+				fprintf(stderr, "rdmsr: No CPU %d\n", cpu);
+				exit(2);
+			} else if (errno == EIO) {
+				fprintf(stderr, "rdmsr: CPU %d doesn't support MSRs\n",
+					cpu);
+				exit(3);
+			} else {
+				perror("rdmsr: open");
+				exit(127);
+			}
 		}
-	}
 
-	if (pread(fd, &data, sizeof data, reg) != sizeof data) {
-		if (errno == EIO) {
-			fprintf(stderr, "rdmsr: CPU %d cannot read "
-				"MSR 0x%08"PRIx32"\n",
-				cpu, reg);
-			exit(4);
-		} else {
-			perror("rdmsr: pread");
-			exit(127);
+		if (pread(fd, &data, sizeof data, reg) != sizeof data) {
+			if (errno == EIO) {
+				fprintf(stderr, "rdmsr: CPU %d cannot read "
+					"MSR 0x%08"PRIx32"\n",
+					cpu, reg);
+				exit(4);
+			} else {
+				perror("rdmsr: pread");
+				exit(127);
+			}
 		}
+
+		close(fd);
+
+		printf("CPU %d Read: %lx\n", cpu, data);
+		// Apply mask
+		data &= (~mask);
 	}
-
-	close(fd);
-
-	printf("CPU %d Read: %lx\n", cpu, data);
-	// Apply mask
-	data &= (~mask);
 
 	// Write the MSR
 	fd = open(msr_file_name, O_WRONLY);
@@ -209,7 +216,9 @@ void rmwmsr_on_cpu(uint32_t reg, int cpu, unsigned long mask, int valcnt, char *
 
 	while (valcnt--) {
 		data |= strtoull(*regvals++, NULL, 0);
-		printf("CPU %d Writing: %lx\n", cpu, data);
+		if(rdmsr_required) {
+			printf("CPU %d Writing: %lx\n", cpu, data);
+		}
 		if (pwrite(fd, &data, sizeof data, reg) != sizeof data) {
 			if (errno == EIO) {
 				fprintf(stderr,
