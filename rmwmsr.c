@@ -42,7 +42,7 @@ static const struct option long_options[] = {
 };
 static const char short_options[] = "hVap:m:";
 static int doing_for_all = 0;
-static bool rdmsr_required = false;
+static int rdmsr_required = 0;
 
 const char *program;
 
@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (mask != ULONG_MAX) {
-		rdmsr_required = true;
+		rdmsr_required = 1;
 	}
 
 	if (optind > argc - 2) {
