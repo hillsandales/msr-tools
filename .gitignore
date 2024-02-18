@@ -11,7 +11,7 @@ config.log
 config.status
 config.sub
 configure
-cpuid
+msr-cpuid
 depcomp
 install-sh
 libtool
@@ -20,4 +20,7 @@ missing
 rdmsr
 stamp-h1
 wrmsr
+rmwmsr
 *.o
+*.swp
+*~
