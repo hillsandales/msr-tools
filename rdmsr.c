@@ -17,6 +17,11 @@
  * Utility to read an MSR.
  */
 
+#define _XOPEN_SOURCE 500
+// #define _GNU_SOURCE
+#define _BSD_SOURCE  1
+#define _SVID_SOURCE 1
+
 #include <errno.h>
 #include <stdio.h>
 #include <fcntl.h>

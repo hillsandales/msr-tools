@@ -17,6 +17,12 @@
  *
  */
 
+#define _XOPEN_SOURCE 500
+// #define _GNU_SOURCE
+#define _BSD_SOURCE  1
+#define _SVID_SOURCE 1
+
+
 #include <stdio.h>
 #include <ctype.h>
 #include <stdbool.h>
@@ -26,6 +32,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <dirent.h>
 
 struct cpuid {
 	uint32_t eax, ebx, ecx, edx;
